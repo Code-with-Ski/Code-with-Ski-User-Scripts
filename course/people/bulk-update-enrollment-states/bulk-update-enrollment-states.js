@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         Bulk Update Enrollments
-// @namespace    https://github.com/Code-with-Ski/Code-with-Ski-User-Scripts/course/people/bulk-update-enrollments
+// @name         Bulk Update Enrollment States
+// @namespace    https://github.com/Code-with-Ski/Code-with-Ski-User-Scripts/course/people/bulk-update-enrollment-states
 // @version      1.0.0
 // @description  Adds ability to bulk update enrollments
 // @author       James Sekcienski, Code with Ski
@@ -88,7 +88,7 @@
     anchor.insertAdjacentHTML(
       "afterbegin",
       `
-      <i class="icon-edit" aria-hidden="true"></i> Manage Enrollments
+      <i class="icon-edit" aria-hidden="true"></i> Update Enrollment States
     `
     );
     anchor.addEventListener("click", () => {
@@ -121,7 +121,7 @@
     wrapper.style.display = "flex";
     wrapper.style.flexDirection = "column";
 
-    wrapper.append(createDialogHeader(dialog, "Bulk Update Enrollments"));
+    wrapper.append(createDialogHeader(dialog, "Bulk Update Enrollment States"));
     wrapper.append(createDialogBody(dialog));
     wrapper.append(createDialogFooter(dialog));
 
