@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Bulk Update Enrollment States
 // @namespace    https://github.com/Code-with-Ski/Code-with-Ski-User-Scripts/course/people/bulk-update-enrollment-states
-// @version      1.0.0
+// @version      1.1.0
 // @description  Adds ability to bulk update enrollments
 // @author       James Sekcienski, Code with Ski
 // @match      https://*.instructure.com/courses/*/users*
@@ -299,11 +299,21 @@
     const heading = document.createElement("h3");
     heading.innerText = "Loading Messages";
 
+    const loadingMessageControlsWrapper = document.createElement("div");
+
     const clearButton = document.createElement("button");
     clearButton.innerText = "Clear Messages";
     clearButton.classList.add("skius-button", "Button");
     clearButton.addEventListener("click", () => {
       updateLoadingMessage("clear");
+    });
+
+    const downloadButton = document.createElement("button");
+    downloadButton.innerHTML = `<i class='icon-line icon-download' title="Download loading messages"></i>`;
+    downloadButton.classList.add("skius-button", "Button");
+    downloadButton.style.marginLeft = "0.5rem";
+    downloadButton.addEventListener("click", () => {
+      downloadLoadingMessages();
     });
 
     const messagesWrapper = document.createElement("div");
@@ -313,11 +323,53 @@
     messagesWrapper.style.overflow = "auto";
     messagesWrapper.style.marginBottom = "1rem";
 
+    loadingMessageControlsWrapper.append(clearButton);
+    loadingMessageControlsWrapper.append(downloadButton);
     headingWrapper.append(heading);
-    headingWrapper.append(clearButton);
+    headingWrapper.append(loadingMessageControlsWrapper);
     wrapper.append(headingWrapper);
     wrapper.append(messagesWrapper);
     return wrapper;
+  }
+
+  function downloadLoadingMessages() {
+    const fileName = `export-loading-messages-bulk-update-enrollments.csv`;
+    const data = [];
+    const messages = [
+      ...document.querySelectorAll(
+        "#skius-update-enrollments-loading-messages p"
+      ),
+    ];
+    for (const message of messages) {
+      const rowData = [];
+
+      const messageType = message?.dataset?.type ?? "";
+      rowData.push(`"${messageType}"`);
+
+      let messageText = message.innerText?.trim();
+      messageText = messageText.replace(/(\r\n|\n|\r)/gm, ";");
+      messageText = messageText.replace(/(\s\s)/gm, " ");
+      messageText = messageText.replace(/(; )+/gm, ";");
+      messageText = messageText.replace(/"/g, '""');
+      rowData.push(`"${messageText}"`);
+
+      data.push(rowData.join(","));
+    }
+
+    const csvString = data.join("\n");
+
+    // Download it
+    const link = document.createElement("a");
+    link.style.display = "none";
+    link.setAttribute("target", "_blank");
+    link.setAttribute(
+      "href",
+      "data:text/csv;charset=utf-8," + encodeURIComponent(csvString)
+    );
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   function createTable() {
@@ -431,16 +483,16 @@
       messageWrapper.innerHTML = "";
     } else if (messageType == "success") {
       messageWrapper.innerHTML += `
-        <p class='text-success'><i class='icon-line icon-check'></i> ${newMessage}</p>
+        <p class='text-success' data-type='${messageType}'><i class='icon-line icon-check'></i> ${newMessage}</p>
       `;
     } else if (messageType == "error") {
       messageWrapper.innerHTML = `
         ${messageWrapper.innerHTML}
-        <p class='text-error'><i class='icon-line icon-warning'></i> ${newMessage}</p>
+        <p class='text-error' data-type='${messageType}'><i class='icon-line icon-warning'></i> ${newMessage}</p>
       `;
     } else {
       messageWrapper.innerHTML += `
-        <p class='text-info'><i class='icon-line icon-info'></i> ${newMessage}</p>
+        <p class='text-info' data-type='${messageType}'><i class='icon-line icon-info'></i> ${newMessage}</p>
       `;
     }
 
