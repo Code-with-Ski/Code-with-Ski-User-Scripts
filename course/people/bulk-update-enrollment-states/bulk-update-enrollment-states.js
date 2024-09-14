@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Bulk Update Enrollment States
 // @namespace    https://github.com/Code-with-Ski/Code-with-Ski-User-Scripts/course/people/bulk-update-enrollment-states
-// @version      1.1.0
+// @version      1.1.1
 // @description  Adds ability to bulk update enrollments
 // @author       James Sekcienski, Code with Ski
 // @match      https://*.instructure.com/courses/*/users*
@@ -727,7 +727,7 @@
       const enrollmentId = updateCheckbox?.dataset?.enrollmentId;
       updateLoadingMessage(
         "info",
-        `Updating enrollment [ID: ${courseId}] (Enrollment ${currentCount} of ${totalRowsToUpdate})`
+        `Updating enrollment [ID: ${enrollmentId}] (Enrollment ${currentCount} of ${totalRowsToUpdate})`
       );
       let result;
       if (currentState == "active") {
@@ -783,7 +783,7 @@
       } else {
         updateLoadingMessage(
           "error",
-          `ERROR: Failed to update enrollment [ID: ${courseId}]`
+          `ERROR: Failed to update enrollment [ID: ${enrollmentId}]`
         );
       }
     }
