@@ -1,10 +1,10 @@
 // ==UserScript==
-// @name         Bulk Update Enrollment States
-// @namespace    https://github.com/Code-with-Ski/Code-with-Ski-User-Scripts/course/people/bulk-update-enrollment-states
-// @version      1.1.1
-// @description  Adds ability to bulk update enrollments
+// @name         Bulk Update Threaded Reply Setting
+// @namespace    https://github.com/Code-with-Ski/Code-with-Ski-User-Scripts/course/discussions/bulk-update-threaded-reply-setting
+// @version      1.0.0
+// @description  Adds ability to bulk update threaded reply setting
 // @author       James Sekcienski, Code with Ski
-// @match      https://*.instructure.com/courses/*/users*
+// @match      https://*.instructure.com/courses/*/discussion_topics
 // ==/UserScript==
 
 (function () {
@@ -20,35 +20,30 @@
       return ENV.current_user_roles?.includes(userRole);
     });
 
-  const activeGranularEnrollmentPermissions =
-    ENV?.permissions?.active_granular_enrollment_permissions ?? [];
   const hasPermission =
-    activeGranularEnrollmentPermissions &&
-    activeGranularEnrollmentPermissions.length > 0;
-
-  const allowUpdatingSisEnrollments = false;
-
-  const sections = ENV?.SECTIONS ?? [];
-  const sectionsDictionary = {};
-  for (const section of sections) {
-    sectionsDictionary[section?.id] = section?.name;
-  }
+    ENV?.permissions?.change_settings && ENV?.permissions?.manage_content;
 
   if (
     isApprovedUser &&
     hasPermission &&
-    /^\/courses\/[0-9]+\/users\??[^\/]*\/?$/.test(window.location.pathname)
+    /^\/courses\/[0-9]+\/discussion_topics\??[^\/]*\/?$/.test(
+      window.location.pathname
+    )
   ) {
-    watchForPeopleOptionsMenu();
+    watchForDiscussionsMenu();
   }
 
-  function watchForPeopleOptionsMenu() {
-    const peopleOptionMenu = document.querySelector("#people-options ul");
-    if (peopleOptionMenu) {
-      addBulkUpdateElements(peopleOptionMenu);
+  function watchForDiscussionsMenu() {
+    const discussionsMenu = document.querySelector(
+      "#discussion_menu_link + ul.al-options.ui-menu"
+    );
+    if (discussionsMenu) {
+      addBulkUpdateElements(discussionsMenu);
     } else {
       const observer = new MutationObserver((mutations) => {
-        const addedMenu = document.querySelector("#people-options ul");
+        const addedMenu = document.querySelector(
+          "#discussion_menu_link + ul.al-options.ui-menu"
+        );
         if (addedMenu) {
           addBulkUpdateElements(addedMenu);
           observer.disconnect();
@@ -59,14 +54,14 @@
     }
   }
 
-  function addBulkUpdateElements(peopleOptionsMenu) {
-    addBulkUpdateMenuOption(peopleOptionsMenu);
+  function addBulkUpdateElements(discussionsMenu) {
+    addBulkUpdateMenuOption(discussionsMenu);
     addDialog();
   }
 
-  function addBulkUpdateMenuOption(peopleOptionsMenu) {
+  function addBulkUpdateMenuOption(discussionsMenu) {
     const bulkUpdateOption = createBulkUpdateOption();
-    peopleOptionsMenu.insertAdjacentElement("beforeend", bulkUpdateOption);
+    discussionsMenu.insertAdjacentElement("beforeend", bulkUpdateOption);
   }
 
   function addDialog() {
@@ -88,7 +83,7 @@
     anchor.insertAdjacentHTML(
       "afterbegin",
       `
-      <i class="icon-edit" aria-hidden="true"></i> Update Enrollment States
+      <i class="icon-edit" aria-hidden="true"></i> Update Threaded
     `
     );
     anchor.addEventListener("click", () => {
@@ -121,7 +116,9 @@
     wrapper.style.display = "flex";
     wrapper.style.flexDirection = "column";
 
-    wrapper.append(createDialogHeader(dialog, "Bulk Update Enrollment States"));
+    wrapper.append(
+      createDialogHeader(dialog, "Bulk Update Threaded Reply Settings")
+    );
     wrapper.append(createDialogBody(dialog));
     wrapper.append(createDialogFooter(dialog));
 
@@ -171,8 +168,9 @@
       `
       <details style="margin-bottom: 1rem;">
         <summary>About/How to Use</summary>
-        <p>Use this tool to bulk update enrollment states for users. Use the select options to configure the type of bulk update you want to make. Then, click "Load Enrollments" and it will load in the relevant enrollments to potentially change.</p>
-        <p>After the enrollments are loaded in, they are all selected to be updated by default. You can uncheck enrollments that you don't want to update.  When ready, click "Update" and confirm to begin the update process. If the update is succcessful, it will remove that row from the table. If there is an error, it will remain in the table and an error message will be loaded in the loading messages.</p>
+        <p>Use this tool to bulk update the threaded reply setting for discussions. Use the select options to configure the type of bulk update you want to make. Then, click "Load Discussions" and it will load in the relevant discussions to potentially change.</p>
+        <p>After the discussions are loaded in, they are all selected to be updated by default. You can uncheck discussions that you don't want to update.  When ready, click "Update" and confirm to begin the update process. If the update is succcessful, it will remove that row from the table. If there is an error, it will remain in the table and an error message will be loaded in the loading messages. <em>*NOTE: Discussions with replies are excluded from disabling threaded replies.</em></p>
+        <p>Threaded replies means users can reply to each other's replies.  Not threaded means that users can only reply to the original discussion topic post and not directly to other user's replies.</p>
       </details>
     `
     );
@@ -186,84 +184,29 @@
 
   function createUpdateSettings() {
     const wrapper = document.createElement("div");
-    wrapper.id = "skius-enrollments-update-settings";
+    wrapper.id = "skius-update-threaded-reply-settings";
 
     const typeLabel = document.createElement("label");
-    typeLabel.innerText = "Select Type of Users to Update: ";
+    typeLabel.innerText = "Select Type of Update: ";
     typeLabel.style.display = "block";
     const typeSelect = document.createElement("select");
-    typeSelect.id = "skius-select-enrollment-type";
-    addManageableUserTypeOptions(typeSelect);
+    typeSelect.id = "skius-select-update-type";
+    addUpdateOptions(typeSelect);
     typeLabel.append(typeSelect);
 
-    const sectionLabel = document.createElement("label");
-    sectionLabel.innerText = "Select Section (or All) to Update: ";
-    sectionLabel.style.display = "block";
-    const sectionSelect = document.createElement("select");
-    sectionSelect.id = "skius-select-enrollment-section";
-    addSectionOptions(sectionSelect);
-    sectionLabel.append(sectionSelect);
-
-    const updateLabel = document.createElement("label");
-    updateLabel.innerText = "Select Enrollment State Change: ";
-    updateLabel.style.display = "block";
-    const updateSelect = document.createElement("select");
-    updateSelect.id = "skius-select-enrollment-state-change";
-    addUpdateOptions(updateSelect);
-    updateLabel.append(updateSelect);
-
     wrapper.append(typeLabel);
-    wrapper.append(sectionLabel);
-    wrapper.append(updateLabel);
 
     return wrapper;
-  }
-
-  function addManageableUserTypeOptions(select) {
-    for (const role of activeGranularEnrollmentPermissions) {
-      select.insertAdjacentHTML(
-        "beforeend",
-        `
-        <option value='${role}'${
-          role == "StudentEnrollment" ? " selected" : ""
-        }>${role.replace("Enrollment", " Based Enrollments")}</option>
-      `
-      );
-    }
-  }
-
-  function addSectionOptions(select) {
-    select.insertAdjacentHTML(
-      "beforeend",
-      `
-      <option value='' selected>All Sections</option>
-    `
-    );
-
-    for (const section of sections) {
-      select.insertAdjacentHTML(
-        "beforeend",
-        `
-        <option value='${section?.id}'>${section?.name}</option>
-      `
-      );
-    }
   }
 
   function addUpdateOptions(select) {
     const options = [
       {
-        value: "active|inactivate",
-        name: "Active to Inactive",
+        value: "threaded",
+        name: "Enable threaded replies",
         selected: true,
       },
-      { value: "active|delete", name: "Active to Deleted" },
-      { value: "active|conclude", name: "Active to Concluded" },
-      { value: "inactive|active", name: "Inactive to Active" },
-      { value: "completed|active", name: "Concluded to Active" },
-      { value: "completed|inactive", name: "Concluded to Inactive" },
-      { value: "deleted|inactive", name: "Deleted to Inactive" },
-      { value: "deleted|active", name: "Deleted to Active" },
+      { value: "not_threaded", name: "Disable threaded replies" },
     ];
     for (const option of options) {
       select.insertAdjacentHTML(
@@ -280,10 +223,10 @@
   function createLoadButton() {
     const button = document.createElement("button");
     button.classList.add("skius", "Button", "Button--secondary");
-    button.innerText = "Load Enrollments";
+    button.innerText = "Load Discussions";
     button.style.marginBottom = "1rem";
     button.addEventListener("click", () => {
-      loadEnrollments();
+      loadDiscussions();
     });
 
     return button;
@@ -317,7 +260,8 @@
     });
 
     const messagesWrapper = document.createElement("div");
-    messagesWrapper.id = "skius-update-enrollments-loading-messages";
+    messagesWrapper.id =
+      "skius-update-threaded-reply-settings-loading-messages";
     messagesWrapper.style.borderTop = "1px solid gray";
     messagesWrapper.style.maxHeight = "120px";
     messagesWrapper.style.overflow = "auto";
@@ -333,11 +277,11 @@
   }
 
   function downloadLoadingMessages() {
-    const fileName = `export-loading-messages-bulk-update-enrollments.csv`;
+    const fileName = `export-loading-messages-bulk-update-threaded-reply-settings.csv`;
     const data = [];
     const messages = [
       ...document.querySelectorAll(
-        "#skius-update-enrollments-loading-messages p"
+        "#skius-update-threaded-reply-settings-loading-messages p"
       ),
     ];
     for (const message of messages) {
@@ -384,7 +328,7 @@
       "ic-Table--hover-row",
       "ic-Table--striped"
     );
-    table.id = "skius-enrollments";
+    table.id = "skius-discussions";
 
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
@@ -397,11 +341,11 @@
     const selectAllCheckbox = document.createElement("input");
     selectAllCheckbox.type = "checkbox";
     selectAllCheckbox.checked = true;
-    selectAllCheckbox.title = "Click to uncheck all enrollments for update";
+    selectAllCheckbox.title = "Click to uncheck all discussions for update";
     selectAllCheckbox.addEventListener("click", () => {
       const checkboxes = [
         ...document.querySelectorAll(
-          "#skius-enrollments tbody input.skius-update-checkbox"
+          "#skius-discussions tbody input.skius-update-checkbox"
         ),
       ];
       const isChecked = selectAllCheckbox.checked;
@@ -410,9 +354,9 @@
       }
 
       if (isChecked) {
-        selectAllCheckbox.title = "Click to uncheck all enrollments to update";
+        selectAllCheckbox.title = "Click to uncheck all discussions to update";
       } else {
-        selectAllCheckbox.title = "Click to check all enrollments to update";
+        selectAllCheckbox.title = "Click to check all discussions to update";
       }
     });
     selectAllLabel.append(selectAllCheckbox);
@@ -421,15 +365,10 @@
     headerRow.insertAdjacentHTML(
       "beforeend",
       `
-      <th style="background-color: #ffffff; position: sticky; top: 0px;">Name</th>
-      <th style="background-color: #ffffff; position: sticky; top: 0px;">Email</th>
-      <th style="background-color: #ffffff; position: sticky; top: 0px;">Section</th>
-      <th style="background-color: #ffffff; position: sticky; top: 0px;">Role</th>
-      <th style="background-color: #ffffff; position: sticky; top: 0px;">Enrollment State</th>
-      <th style="background-color: #ffffff; position: sticky; top: 0px;">Last Activity</th>
-      <th style="background-color: #ffffff; position: sticky; top: 0px;">Total Activity Time</th>
-      <th style="background-color: #ffffff; position: sticky; top: 0px;">Enrolled At</th>
-      <th style="background-color: #ffffff; position: sticky; top: 0px;">Updated At</th>
+      <th style="background-color: #ffffff; position: sticky; top: 0px;">Discussion Title</th>
+      <th style="background-color: #ffffff; position: sticky; top: 0px;">Last Date of Reply</th>
+      <th style="background-color: #ffffff; position: sticky; top: 0px;">Number of Replies</th>
+      <th style="background-color: #ffffff; position: sticky; top: 0px;">Published</th>
     `
     );
     thead.append(headerRow);
@@ -463,7 +402,7 @@
     updateButton.innerText = "Update";
     updateButton.style.marginLeft = "0.5rem";
     updateButton.addEventListener("click", () => {
-      updateSelectedEnrollments();
+      updateSelectedDiscussions();
     });
 
     wrapper.append(closeButton);
@@ -473,7 +412,7 @@
 
   function updateLoadingMessage(messageType, newMessage) {
     const messageWrapper = document.querySelector(
-      "#skius-update-enrollments-loading-messages"
+      "#skius-update-threaded-reply-settings-loading-messages"
     );
     if (!messageWrapper) {
       return;
@@ -510,121 +449,112 @@
     }
   }
 
-  async function loadEnrollments() {
+  async function loadDiscussions() {
     updateInputsDisabledState(true);
     updateLoadingMessage("clear");
-    const table = document.getElementById("skius-enrollments");
+
+    const updateType = document.getElementById(
+      "skius-select-update-type"
+    )?.value;
+    if (!updateType) {
+      updateLoadingMessage("error", "No update type selected");
+      return;
+    }
+
+    const table = document.getElementById("skius-discussions");
     const tableBody = table.querySelector("tbody");
     if (tableBody) {
       tableBody.innerHTML = "";
     }
 
-    updateLoadingMessage("info", "Getting enrollments...");
-    const url = createEnrollmentsRequestUrl();
-    const enrollments = (await getEnrollments(url)) ?? [];
+    updateLoadingMessage("info", "Getting discussions...");
+    const url = createDiscussionsRequestUrl();
+    const discussions = (await getDiscussions(url)) ?? [];
 
-    updateLoadingMessage("info", "Adding enrollment rows");
-    for (const enrollment of enrollments) {
-      if (!allowUpdatingSisEnrollments && enrollment?.sis_import_id) {
-        // Skip enrollment from SIS Import when updating isn't permitted
-        continue;
+    updateLoadingMessage("info", "Adding discussion rows");
+    for (const discussion of discussions) {
+      const discussionType = discussion?.discussion_type;
+      const numOfReplies = discussion?.discussion_subentry_count ?? 0;
+      if (
+        (updateType == "threaded" && discussionType != "threaded") ||
+        (updateType == "not_threaded" &&
+          discussionType == "threaded" &&
+          numOfReplies == 0)
+      ) {
+        addRow(tableBody, discussion);
       }
-      addRow(tableBody, enrollment);
     }
     updateLoadingMessage("success", "Finished loading!");
 
     updateInputsDisabledState(false);
   }
 
-  function addRow(tableBody, enrollment) {
+  function addRow(tableBody, discussion) {
     const row = document.createElement("tr");
 
     const selectTd = document.createElement("td");
     const selectLabel = document.createElement("label");
-    selectLabel.innerHTML = `<span class='screenreader-only'>Check/Uncheck Enrollment</span>`;
+    selectLabel.innerHTML = `<span class='screenreader-only'>Check/Uncheck Discussion</span>`;
     const selectCheckbox = document.createElement("input");
     selectCheckbox.type = "checkbox";
     selectCheckbox.classList.add("skius-update-checkbox");
     selectCheckbox.checked = true;
-    selectCheckbox.title = "Click to not select this enrollment to update";
+    selectCheckbox.title = "Click to not select this discussion to update";
     selectCheckbox.addEventListener("click", () => {
       if (selectCheckbox.checked) {
-        selectCheckbox.title = "Click to not select this enrollment to update";
+        selectCheckbox.title = "Click to not select this discussion to update";
       } else {
-        selectCheckbox.title = "Click to select this enrollment to update";
+        selectCheckbox.title = "Click to select this discussion to update";
       }
     });
-    selectCheckbox.dataset.enrollmentId = enrollment?.id;
-    selectCheckbox.dataset.userId = enrollment?.user_id;
-    selectCheckbox.dataset.roleType = enrollment?.type;
-    selectCheckbox.dataset.roleId = enrollment?.role_id;
-    selectCheckbox.dataset.sectionId = enrollment?.course_section_id;
-    selectCheckbox.dataset.limitToSection =
-      enrollment?.limit_privileges_to_course_section;
+    selectCheckbox.dataset.discussionId = discussion?.id;
     selectLabel.append(selectCheckbox);
     selectTd.append(selectLabel);
     row.append(selectTd);
 
-    const sectionName =
-      sectionsDictionary[enrollment?.course_section_id ?? 0] ??
-      "UNKNOWN SECTION NAME";
+    let lastReplyDate = discussion?.last_reply_at;
+    if (lastReplyDate) {
+      lastReplyDate = new Date(lastReplyDate).toLocaleString();
+    } else {
+      lastReplyDate = "No replies yet";
+    }
 
     row.insertAdjacentHTML(
       "beforeend",
       `
-      <td title="${enrollment?.user?.name}">${
-        enrollment?.user?.short_name ?? "MISSING DISPLAY NAME"
-      }</td>
-      <td>${enrollment?.user?.email}</td>
-      <td>${sectionName}</td>
-      <td>${enrollment?.role}</td>
-      <td>${enrollment?.enrollment_state}</td>
-      <td>${enrollment?.last_activity_at ?? "Never Accessed"}</td>
-      <td>${enrollment?.total_activity_time ?? "Never Accessed"}</td>
-      <td>${enrollment?.created_at}</td>
-      <td>${enrollment?.updated_at}</td>
+      <td>${discussion?.title}</td>
+      <td>${lastReplyDate}</td>
+      <td>${discussion?.discussion_subentry_count ?? 0}</td>
+      <td>${discussion?.published}</td>
     `
     );
 
     tableBody.append(row);
   }
 
-  function createEnrollmentsRequestUrl() {
-    const roleType = document.getElementById(
-      "skius-select-enrollment-type"
-    )?.value;
-    const sectionId = document.getElementById(
-      "skius-select-enrollment-section"
-    )?.value;
+  function createDiscussionsRequestUrl() {
     const updateType = document.getElementById(
-      "skius-select-enrollment-state-change"
+      "skius-select-update-type"
     )?.value;
 
-    if (roleType && updateType) {
-      const enrollmentsToGet = updateType.split("|")[0];
-      if (sectionId) {
-        return `
-          ${window.location.protocol}//${window.location.hostname}/api/v1/sections/${sectionId}/enrollments?type[]=${roleType}&state[]=${enrollmentsToGet}&include[]=email&per_page=100
-        `;
-      } else {
-        const courseId = window.location.pathname.split("/")[2];
-        return `
-          ${window.location.protocol}//${window.location.hostname}/api/v1/courses/${courseId}/enrollments?type[]=${roleType}&state[]=${enrollmentsToGet}&include[]=email&per_page=100
-        `;
-      }
+    if (updateType) {
+      const courseId = window.location.pathname.split("/")[2];
+      return `
+        ${window.location.protocol}//${window.location.hostname}/api/v1/courses/${courseId}/discussion_topics?&per_page=100
+      `;
     }
 
     updateLoadingMessage("error", "ERROR: Missing expected select value");
     return;
   }
 
-  async function getEnrollments(url, enrollments = [], page = 1) {
+  async function getDiscussions(url, discussions = [], page = 1) {
     if (!url) {
       updateLoadingMessage(
         "error",
-        "ERROR: No URL provided for getEnrollments"
+        "ERROR: No URL provided for getDiscussions"
       );
-      return enrollments;
+      return discussions;
     }
 
     let requestResponse;
@@ -635,13 +565,13 @@
       })
       .then(async (data) => {
         const links = getRequestLinks(requestResponse);
-        enrollments.push(...data);
+        discussions.push(...data);
         if (hasNextPage(links)) {
           page++;
-          updateLoadingMessage("info", `Getting enrollments (Page ${page})...`);
-          return await getEnrollments(links.next, enrollments, page);
+          updateLoadingMessage("info", `Getting discussions (Page ${page})...`);
+          return await getDiscussions(links.next, discussions, page);
         }
-        return enrollments;
+        return discussions;
       })
       .catch((error) => {
         console.error(`Error: ${error}\nStack Trace: ${error.stack}`);
@@ -649,7 +579,7 @@
           "error",
           `Error: ${error}\nStack Trace: ${error.stack}`
         );
-        return enrollments;
+        return discussions;
       });
   }
 
@@ -688,22 +618,15 @@
     return "next" in links && links["next"] != links["current"];
   }
 
-  async function updateSelectedEnrollments() {
-    const roleType = document.getElementById(
-      "skius-select-enrollment-type"
-    )?.value;
+  async function updateSelectedDiscussions() {
     const updateType = document.getElementById(
-      "skius-select-enrollment-state-change"
+      "skius-select-update-type"
     )?.value;
-    const [currentState, updateState] = updateType.split("|");
     const courseId = window.location.pathname.split("/")[2];
 
     if (
       !confirm(
-        `You are about to update the selected ${roleType.replace(
-          "Enrollment",
-          " based"
-        )} enrollments. Do NOT refresh or leave this page while it is processing or the process will not fully complete.\n\nClick 'OK' to begin processing. Otherwise, click 'Cancel' and no changes will be made.`
+        `You are about to update the selected discussions. Do NOT refresh or leave this page while it is processing or the process will not fully complete.\n\nClick 'OK' to begin processing. Otherwise, click 'Cancel' and no changes will be made.`
       )
     ) {
       return;
@@ -711,10 +634,10 @@
 
     updateInputsDisabledState(true);
     updateLoadingMessage("clear");
-    updateLoadingMessage("info", "Preparing to process enrollments to update");
+    updateLoadingMessage("info", "Preparing to process discussions to update");
     const rowsToUpdate = [
       ...document.querySelectorAll(
-        "#skius-enrollments > tbody > tr:has(input[type='checkbox']:checked)"
+        "#skius-discussions > tbody > tr:has(input[type='checkbox']:checked)"
       ),
     ];
     const totalRowsToUpdate = rowsToUpdate.length;
@@ -724,75 +647,31 @@
       const updateCheckbox = row.querySelector(
         `input[type='checkbox']:checked`
       );
-      const enrollmentId = updateCheckbox?.dataset?.enrollmentId;
+      const discussionId = updateCheckbox?.dataset?.discussionId;
       updateLoadingMessage(
         "info",
-        `Updating enrollment [ID: ${enrollmentId}] (Enrollment ${currentCount} of ${totalRowsToUpdate})`
+        `Updating discussion [ID: ${discussionId}] (Discussion ${currentCount} of ${totalRowsToUpdate})`
       );
       let result;
-      if (currentState == "active") {
-        if (["conclude", "delete", "inactivate"].includes(updateState)) {
-          result = await endEnrollment(courseId, enrollmentId, updateState);
-        } else {
-          updateLoadingMessage(
-            "error",
-            `ERROR: Invalid update state for handling (Update State: ${updateState})`
-          );
-        }
-      } else if (currentState == "inactive") {
-        if (updateState == "active") {
-          result = await reactivateEnrollment(courseId, enrollmentId);
-        } else {
-          updateLoadingMessage(
-            "error",
-            `ERROR: Invalid update state for handling (Update State: ${updateState})`
-          );
-        }
-      } else if (currentState == "completed" || currentState == "deleted") {
-        if (updateState == "active" || updateState == "inactive") {
-          const userId = updateCheckbox?.dataset?.userId;
-          const roleType = updateCheckbox?.dataset?.roleType;
-          const roleId = updateCheckbox?.dataset?.roleId;
-          const sectionId = updateCheckbox?.dataset?.sectionId;
-          const limitToSection = updateCheckbox?.dataset?.limitToSection;
-          const params = {
-            enrollment: {
-              user_id: userId,
-              type: roleType,
-              role_id: roleId,
-              enrollment_state: updateState,
-              course_section_id: sectionId,
-              limit_privileges_to_course_section: limitToSection,
-            },
-          };
-          result = await addEnrollment(courseId, params);
-        } else {
-          updateLoadingMessage(
-            "error",
-            `ERROR: Invalid update state for handling (Update State: ${updateState})`
-          );
-        }
-      } else {
-        updateLoadingMessage(
-          "error",
-          `ERROR: Invalid current state for handling (Current State: ${currentState})`
-        );
-      }
+      result = await updateDiscussion(courseId, discussionId, {
+        discussion_type: updateType,
+      });
+
       if (result) {
         row.remove();
       } else {
         updateLoadingMessage(
           "error",
-          `ERROR: Failed to update enrollment [ID: ${enrollmentId}]`
+          `ERROR: Failed to update discussion [ID: ${discussionId}]`
         );
       }
     }
-    updateLoadingMessage("success", `Finished updating enrollments!`);
+    updateLoadingMessage("success", `Finished updating discussions!`);
 
     updateInputsDisabledState(false);
   }
 
-  async function addEnrollment(courseId, params = {}) {
+  async function updateDiscussion(courseId, discussionId, params = {}) {
     const CSRFtoken = function () {
       return decodeURIComponent(
         (document.cookie.match("(^|;) *_csrf_token=([^;]*)") || "")[2]
@@ -806,81 +685,13 @@
     };
 
     const requestUrl = new URL(
-      `${window.location.protocol}//${window.location.hostname}/api/v1/courses/${courseId}/enrollments`
-    );
-
-    return await fetch(requestUrl, {
-      method: "POST",
-      headers: requestHeaders,
-      body: JSON.stringify(params),
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
-        } else {
-          throw `Request failed: ${requestUrl} Status: ${response.statusText} (${response.status})`;
-        }
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
-  }
-
-  async function endEnrollment(courseId, enrollmentId, endType) {
-    const CSRFtoken = function () {
-      return decodeURIComponent(
-        (document.cookie.match("(^|;) *_csrf_token=([^;]*)") || "")[2]
-      );
-    };
-
-    const requestHeaders = {
-      "X-CSRF-Token": CSRFtoken(),
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    };
-
-    const requestUrl = new URL(
-      `${window.location.protocol}//${window.location.hostname}/api/v1/courses/${courseId}/enrollments/${enrollmentId}`
-    );
-    const params = {
-      task: endType,
-    };
-
-    return await fetch(requestUrl, {
-      method: "DELETE",
-      headers: requestHeaders,
-      body: JSON.stringify(params),
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
-        } else {
-          throw `Request failed: ${requestUrl} Status: ${response.statusText} (${response.status})`;
-        }
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
-  }
-
-  async function reactivateEnrollment(courseId, enrollmentId) {
-    const CSRFtoken = function () {
-      return decodeURIComponent(
-        (document.cookie.match("(^|;) *_csrf_token=([^;]*)") || "")[2]
-      );
-    };
-
-    const requestHeaders = {
-      "X-CSRF-Token": CSRFtoken(),
-    };
-
-    const requestUrl = new URL(
-      `${window.location.protocol}//${window.location.hostname}/api/v1/courses/${courseId}/enrollments/${enrollmentId}/reactivate`
+      `${window.location.protocol}//${window.location.hostname}/api/v1/courses/${courseId}/discussion_topics/${discussionId}`
     );
 
     return await fetch(requestUrl, {
       method: "PUT",
       headers: requestHeaders,
+      body: JSON.stringify(params),
     })
       .then((response) => {
         if (response.ok) {
